@@ -6,6 +6,7 @@
 """
 
 from os import access, path, R_OK, walk, remove, listdir, makedirs
+
 from Config import Config
 from PlatformSelector import Platform
 
@@ -51,10 +52,13 @@ class FileManager(object):
         return '<{0}: \n  {1}\n>'.format(class_name, '\n  '.join(properties))
 
     def get_update_config_info(self, fileName):
+        checker = self.checker
+        config = self.config
+
         fileName_NEW = '{0}{1}'.format(self.sourcePath, fileName)
-        if self.checker.check_file(fileName):
+        if checker.check_file(fileName):
             pass
-        elif self.checker.check_file(fileName_NEW):
+        elif checker.check_file(fileName_NEW):
             fileName = fileName_NEW
         else:
             return self.config.no_file_error(fileName)
@@ -64,7 +68,7 @@ class FileManager(object):
         info = configFile['info']
         updateType = info['type']
 
-        MSG = self.config.MSG_CODE
+        MSG = config.MSG_CODE
         if updateType == '0':
             # all replace updates.
             result = True
@@ -82,10 +86,13 @@ class FileManager(object):
             return {'result': result, 'msg': msg}
 
         else:
-            return self.config.unknow_update_type()
+            return config.unknow_update_type()
 
     def list_folder_files(self, folderPath, ext, traversal=False):
-        if self.checker.check_path(folderPath):
+        checker = self.checker
+        config = self.config
+
+        if checker.check_path(folderPath):
             if type(ext) in [list, dict, tuple, set]:
                 fileList = []
 
@@ -100,7 +107,7 @@ class FileManager(object):
 
                         fileList.append(filepath)
 
-                MSG = self.config.MSG_CODE
+                MSG = config.MSG_CODE
                 if len(fileList) > 0:
                     msg = MSG[15].format(sorted(fileList))
 
@@ -111,35 +118,41 @@ class FileManager(object):
                 return {'result': result, 'msg': msg}
 
             else:
-                return self.config.illegal_ext_set()
+                return config.illegal_ext_set()
         else:
-            return self.config.no_folder_error(folderPath=folderPath)
+            return config.no_folder_error(folderPath=folderPath)
 
     def delete_file(self, fileName):
+        checker = self.checker
+        config = self.config
+
         fileName_NEW = '{0}{1}'.format(self.sourcePath, fileName)
-        if self.checker.check_file(fileName):
+        if checker.check_file(fileName):
             pass
-        elif self.checker.check_file(fileName_NEW):
+        elif checker.check_file(fileName_NEW):
             fileName = fileName_NEW
         else:
-            return self.config.no_file_error(fileName)
+            return config.no_file_error(fileName)
 
-        MSG = self.config.MSG_CODE
+        MSG = config.MSG_CODE
         try:
             remove(fileName)
             result = True
             msg = MSG[18].format(fileName)
 
         except Exception as e:
-            return self.config.delete_file_exception(fileName=fileName,
-                                                     exception=e)
+            return config.delete_file_exception(fileName=fileName,
+                                                exception=e)
 
         finally:
             return {'result': result, 'msg': msg}
 
     def delete_folder(self, folderPath):
-        if self.checker.check_path(folderPath):
-            MSG = self.config.MSG_CODE
+        checker = self.checker
+        config = self.config
+
+        if checker.check_path(folderPath):
+            MSG = config.MSG_CODE
 
             import shutil
             try:
@@ -148,92 +161,140 @@ class FileManager(object):
                 msg = MSG[19].format(folderPath)
 
             except Exception as e:
-                return self.config.delete_folder_exception(folderPath=folderPath,
-                                                           exception=e)
+                return config.delete_folder_exception(folderPath=folderPath,
+                                                      exception=e)
 
             finally:
                 return {'result': result, 'msg': msg}
 
         else:
-            return self.config.no_folder_error(folderPath=folderPath)
+            return config.no_folder_error(folderPath=folderPath)
 
     def copy_file(self, fileName, targetPath):
-        if self.checker.check_path(targetPath):
-            fileName_NEW = '{0}{1}'.format(self.sourcePath, fileName)
-            if self.checker.check_file(fileName):
-                pass
-            elif self.checker.check_file(fileName_NEW):
-                fileName = fileName_NEW
-            else:
-                return self.config.no_file_error(fileName)
-            MSG = self.config.MSG_CODE
+        checker = self.checker
+        config = self.config
 
+        if checker.check_path(targetPath):
+            fileName_NEW = '{0}{1}'.format(self.sourcePath, fileName)
+
+            if checker.check_file(fileName):
+                pass
+
+            elif checker.check_file(fileName_NEW):
+                fileName = fileName_NEW
+
+            else:
+                return config.no_file_error(fileName)
+
+            MSG = config.MSG_CODE
+            sourceFile = path.join(path.dirname(fileName),
+                                   path.basename(fileName))
+            targetFile = path.join(targetPath,
+                                   path.basename(fileName))
+
+            with open(targetFile, 'wb') as targetfile:
+                with open(sourceFile, 'rb') as sourcefile:
+                    targetfile.write(sourcefile)
+
+            result = True
+            msg = MSG[22].format(fileName, targetPath)
+            return {'result': result, 'msg': msg}
 
         else:
-            return self.config.no_folder_error(folderPath=targetPath)
+            return config.no_folder_error(folderPath=targetPath)
 
     def copy_folder(self, folderPath, targetPath):
-        if self.checker.check_path(folderPath):
+        checker = self.checker
+        config = self.config
 
-            folderPath = self.checker.path_full(folderPath)
-            targetPath = self.checker.path_full(targetPath)
+        if checker.check_path(folderPath):
+            if checker.check_path(targetPath):
+                folderPath = checker.path_full(folderPath)
+                targetPath = checker.path_full(targetPath)
 
-            MSG = self.config.MSG_CODE
-            for fileItem in listdir(folderPath):
-                sourceFile = path.join(folderPath, fileItem)
-                targetFile = path.join(targetPath, fileItem)
+                MSG = config.MSG_CODE
+                for fileItem in listdir(folderPath):
+                    sourceFileObj = path.join(folderPath, fileItem)
+                    targetFileObj = path.join(targetPath, fileItem)
 
-                subres = True
-                if self.checker.check_file(sourceFile):
-                    if self.checker.check_path(targetPath):
-                        pass
+                    dotFlag = True  # '.' dot sign in filname or not
+                    if checker.check_file(sourceFileObj):
+                        if checker.check_path(targetPath):
+                            pass
 
-                    else:
-                        makedirs(targetPath)
+                        else:
+                            makedirs(targetPath)
 
-                    if '.' in targetFile:
-                        if targetFile.rsplit('.', 1)[1] in self.banExtList:
-                            subres = False
+                        if '.' in targetFileObj:
+                            if targetFileObj.rsplit('.', 1)[1] in self.banExtList:
+                                dotFlag = False
+
+                            else:
+                                pass
+
+                        targetFileSize = path.getsize(targetFileObj)
+                        sourceFileSize = path.getsize(sourceFileObj)
+                        if dotFlag and not checker.check_file(targetFileObj) \
+                                or (checker.check_file(targetFileObj)
+                                    and targetFileSize != sourceFileSize):
+
+                            with open(targetFileObj, 'wb') as targetFile:
+                                with open(sourceFileObj, 'rb') as sourceFile:
+                                    targetFile.write(sourceFile)
 
                         else:
                             pass
 
-                    if subres and not self.checker.check_file(targetFile) or (
-                                self.checker.check_file(targetFile) and path.getsize(targetFile) != path.getsize(
-                                sourceFile)):
-                        with open(targetFile, 'wb') as tf:
-                            with open(sourceFile, 'rb') as sf:
-                                tf.write(sf)
-
-
-                    else:
-                        pass
-
-                elif self.checker.check_path(sourceFile):
-                    self.copy_folder(sourceFile, targetFile)
+                    elif checker.check_path(sourceFileObj):
+                        self.copy_folder(sourceFileObj, targetFileObj)
+            else:
+                return config.no_folder_error(folderPath=targetPath)
 
         else:
-            return self.config.no_folder_error(folderPath=folderPath)
+            return config.no_folder_error(folderPath=folderPath)
 
     def move_file(self, fileName, targetPath):
-        if self.checker.check_path(targetPath):
+        checker = self.checker
+        config = self.config
+
+        if checker.check_path(targetPath):
             fileName_NEW = '{0}{1}'.format(self.sourcePath, fileName)
-            if self.checker.check_file(fileName):
+            if checker.check_file(fileName):
                 pass
-            elif self.checker.check_file(fileName_NEW):
+            elif checker.check_file(fileName_NEW):
                 fileName = fileName_NEW
             else:
-                return self.config.no_file_error(fileName)
-            MSG = self.config.MSG_CODE
+                return config.no_file_error(fileName)
 
+            cp = self.copy_file(fileName=fileName,
+                                targetPath=targetPath)
 
+            if cp['result']:
+                rm = self.delete_file(fileName=fileName)
+
+                if rm['result']:
+                    MSG = config.MSG_CODE
+                    result = True
+                    msg = MSG[20].format(fileName, targetPath)
+                    return {'result': result, 'msg': msg}
+
+                else:
+                    return config.move_file_exception(fileName=fileName,
+                                                      exception=rm['msg'])
+
+            else:
+                return config.move_file_exception(fileName=fileName,
+                                                  exception=cp['msg'])
 
         else:
-            return self.config.no_folder_error(folderPath=targetPath)
+            return config.no_folder_error(folderPath=targetPath)
 
     def move_folder(self, folderPath, targetPath):
-        if self.checker.check_path(folderPath):
-            if self.checker.check_path(targetPath):
+        checker = self.checker
+        config = self.config
+
+        if checker.check_path(folderPath):
+            if checker.check_path(targetPath):
                 cp = self.copy_folder(folderPath=folderPath,
                                       targetPath=targetPath)
 
@@ -241,22 +302,24 @@ class FileManager(object):
                     rm = self.delete_folder(folderPath=folderPath)
 
                     if rm['result']:
-                        MSG = self.config.MSG_CODE
+                        MSG = config.MSG_CODE
                         result = True
                         msg = MSG[21].format(folderPath, targetPath)
                         return {'result': result, 'msg': msg}
 
                     else:
-                        return rm
+                        return config.move_folder_exception(folderPath=folderPath,
+                                                            exception=rm['msg'])
 
                 else:
-                    return cp
+                    return config.move_folder_exception(folderPath=folderPath,
+                                                        exception=cp['msg'])
 
             else:
-                return self.config.no_folder_error(folderPath=targetPath)
+                return config.no_folder_error(folderPath=targetPath)
 
         else:
-            return self.config.no_folder_error(folderPath=folderPath)
+            return config.no_folder_error(folderPath=folderPath)
 
 
 class Checker(object):
