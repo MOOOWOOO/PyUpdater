@@ -4,7 +4,7 @@
 """
 import platform
 
-__author__ = 'Jux.Liu'
+__author__ = "Jux.Liu"
 
 
 class Platform():
@@ -12,16 +12,16 @@ class Platform():
 
     platform = Platform()
     """
-    pathSplit = '/'
-    tmpFolder = r'/tmp'
+    pathSplit = "/"
+    tmpFolder = r"/tmp"
 
     def __init__(self):
         system = platform.system()
         if system == "Windows":
-            self.pathSplit = '\\'
-            self.tmpFolder = r'C:\\tmp\\'
+            self.pathSplit = "\\"
+            self.tmpFolder = r"C:\\tmp\\"
         elif system == "Linux":
-            self.pathSplit = '/'
-            self.tmpFolder = r'/tmp/'
+            self.pathSplit = "/"
+            self.tmpFolder = r"/tmp/"
         else:
             raise SystemError

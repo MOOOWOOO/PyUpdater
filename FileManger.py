@@ -6,26 +6,27 @@
 """
 
 from os import access, path, R_OK, walk, remove, listdir, makedirs
+import shutil
 
 from Config import Config
 from PlatformSelector import Platform
 
-__author__ = 'Jux.Liu'
+__author__ = "Jux.Liu"
 
 
 class FileManager(object):
     """Class with methods to read config file, list files or folders and
        move/delete/copy files or folders.
 
-    fileManager=FileManager(banExtList=[...]/'...', sourcePath='...')
+    fileManager=FileManager(banExtList=[...]/"...", sourcePath="...")
     banExtList: Filename extensions list, add extensions into this list
                 ignore this type of files on processing.
     sourcePath: The default source path
                 contains the files need to be processed.
     """
-    banExtList = ['pyc', 'pyd', 'pyo']
+    banExtList = ["pyc", "pyd", "pyo"]
 
-    def __init__(self, banExtList=[], sourcePath=''):
+    def __init__(self, banExtList=[], sourcePath=""):
         if len(banExtList):
             if isinstance(banExtList, str):
                 self.banExtList.append(banExtList)
@@ -43,19 +44,19 @@ class FileManager(object):
         self.checker = Checker()
         self.sourcePath = self.checker.path_full(
             sourcePath if self.checker.check_path(sourcePath)
-                          and sourcePath not in [r'./', r'.']
+                          and sourcePath not in [r"./", r"."]
             else self.platform.tmpFolder)
 
     def __repr__(self):
         class_name = self.__class__.__name__
-        properties = ('{0} = {1}'.format(k, v) for k, v in self.__dict__.items())
-        return '<{0}: \n  {1}\n>'.format(class_name, '\n  '.join(properties))
+        properties = ("{0} = {1}".format(k, v) for k, v in self.__dict__.items())
+        return "<{0}: \n  {1}\n>".format(class_name, "\n  ".join(properties))
 
     def get_update_config_info(self, fileName):
         checker = self.checker
         config = self.config
 
-        fileName_NEW = '{0}{1}'.format(self.sourcePath, fileName)
+        fileName_NEW = "{0}{1}".format(self.sourcePath, fileName)
         if checker.check_file(fileName):
             pass
         elif checker.check_file(fileName_NEW):
@@ -65,25 +66,25 @@ class FileManager(object):
 
         from configobj import ConfigObj
         configFile = ConfigObj(fileName)
-        info = configFile['info']
-        updateType = info['type']
+        info = configFile["info"]
+        updateType = info["type"]
 
         MSG = config.MSG_CODE
-        if updateType == '0':
+        if updateType == "0":
             # all replace updates.
             result = True
-            msg = MSG[13].format(info['version'])
-            return {'result': result, 'msg': msg}
+            msg = MSG[13].format(info["version"])
+            return {"result": result, "msg": msg}
 
-        elif updateType == '1':
+        elif updateType == "1":
             # increment updates.
             result = True
-            msg = MSG[14].format(info['version'],
-                                 configFile['delete'],
-                                 configFile['launcher'],
-                                 configFile['requirements'],
-                                 configFile['rollback'])
-            return {'result': result, 'msg': msg}
+            msg = MSG[14].format(info["version"],
+                                 configFile["delete"],
+                                 configFile["launcher"],
+                                 configFile["requirements"],
+                                 configFile["rollback"])
+            return {"result": result, "msg": msg}
 
         else:
             return config.unknow_update_type()
@@ -115,7 +116,7 @@ class FileManager(object):
                     msg = MSG[16]
 
                 result = True
-                return {'result': result, 'msg': msg}
+                return {"result": result, "msg": msg}
 
             else:
                 return config.illegal_ext_set()
@@ -126,7 +127,7 @@ class FileManager(object):
         checker = self.checker
         config = self.config
 
-        fileName_NEW = '{0}{1}'.format(self.sourcePath, fileName)
+        fileName_NEW = "{0}{1}".format(self.sourcePath, fileName)
         if checker.check_file(fileName):
             pass
         elif checker.check_file(fileName_NEW):
@@ -134,38 +135,42 @@ class FileManager(object):
         else:
             return config.no_file_error(fileName)
 
-        MSG = config.MSG_CODE
         try:
             remove(fileName)
-            result = True
-            msg = MSG[18].format(fileName)
 
         except Exception as e:
             return config.delete_file_exception(fileName=fileName,
                                                 exception=e)
 
+        else:
+            result = True
+            MSG = config.MSG_CODE
+            msg = MSG[18].format(fileName)
+
         finally:
-            return {'result': result, 'msg': msg}
+            return {"result": result, "msg": msg}
 
     def delete_folder(self, folderPath):
         checker = self.checker
         config = self.config
 
         if checker.check_path(folderPath):
-            MSG = config.MSG_CODE
 
             import shutil
             try:
                 shutil.rmtree(folderPath)
-                result = True
-                msg = MSG[19].format(folderPath)
 
             except Exception as e:
                 return config.delete_folder_exception(folderPath=folderPath,
                                                       exception=e)
 
+            else:
+                result = True
+                MSG = config.MSG_CODE
+                msg = MSG[19].format(folderPath)
+
             finally:
-                return {'result': result, 'msg': msg}
+                return {"result": result, "msg": msg}
 
         else:
             return config.no_folder_error(folderPath=folderPath)
@@ -175,7 +180,7 @@ class FileManager(object):
         config = self.config
 
         if checker.check_path(targetPath):
-            fileName_NEW = '{0}{1}'.format(self.sourcePath, fileName)
+            fileName_NEW = "{0}{1}".format(self.sourcePath, fileName)
 
             if checker.check_file(fileName):
                 pass
@@ -186,19 +191,20 @@ class FileManager(object):
             else:
                 return config.no_file_error(fileName)
 
-            MSG = config.MSG_CODE
-            sourceFile = path.join(path.dirname(fileName),
-                                   path.basename(fileName))
-            targetFile = path.join(targetPath,
-                                   path.basename(fileName))
+            try:
+                shutil.copy(fileName, targetPath)
 
-            with open(targetFile, 'wb') as targetfile:
-                with open(sourceFile, 'rb') as sourcefile:
-                    targetfile.write(sourcefile)
+            except Exception as e:
+                return config.copy_file_exception(fileName=fileName,
+                                                  exception=e)
 
-            result = True
-            msg = MSG[22].format(fileName, targetPath)
-            return {'result': result, 'msg': msg}
+            else:
+                result = True
+                MSG = config.MSG_CODE
+                msg = MSG[22].format(fileName, targetPath)
+
+            finally:
+                return {"result": result, "msg": msg}
 
         else:
             return config.no_folder_error(folderPath=targetPath)
@@ -217,7 +223,7 @@ class FileManager(object):
                     sourceFileObj = path.join(folderPath, fileItem)
                     targetFileObj = path.join(targetPath, fileItem)
 
-                    dotFlag = True  # '.' dot sign in filname or not
+                    dotFlag = True  # "." dot sign in filname or not
                     if checker.check_file(sourceFileObj):
                         if checker.check_path(targetPath):
                             pass
@@ -225,8 +231,8 @@ class FileManager(object):
                         else:
                             makedirs(targetPath)
 
-                        if '.' in targetFileObj:
-                            if targetFileObj.rsplit('.', 1)[1] in self.banExtList:
+                        if "." in targetFileObj:
+                            if targetFileObj.rsplit(".", 1)[1] in self.banExtList:
                                 dotFlag = False
 
                             else:
@@ -238,8 +244,8 @@ class FileManager(object):
                                 or (checker.check_file(targetFileObj)
                                     and targetFileSize != sourceFileSize):
 
-                            with open(targetFileObj, 'wb') as targetFile:
-                                with open(sourceFileObj, 'rb') as sourceFile:
+                            with open(targetFileObj, "wb") as targetFile:
+                                with open(sourceFileObj, "rb") as sourceFile:
                                     targetFile.write(sourceFile)
 
                         else:
@@ -258,7 +264,7 @@ class FileManager(object):
         config = self.config
 
         if checker.check_path(targetPath):
-            fileName_NEW = '{0}{1}'.format(self.sourcePath, fileName)
+            fileName_NEW = "{0}{1}".format(self.sourcePath, fileName)
             if checker.check_file(fileName):
                 pass
             elif checker.check_file(fileName_NEW):
@@ -269,22 +275,22 @@ class FileManager(object):
             cp = self.copy_file(fileName=fileName,
                                 targetPath=targetPath)
 
-            if cp['result']:
+            if cp["result"]:
                 rm = self.delete_file(fileName=fileName)
 
-                if rm['result']:
-                    MSG = config.MSG_CODE
+                if rm["result"]:
                     result = True
+                    MSG = config.MSG_CODE
                     msg = MSG[20].format(fileName, targetPath)
-                    return {'result': result, 'msg': msg}
+                    return {"result": result, "msg": msg}
 
                 else:
                     return config.move_file_exception(fileName=fileName,
-                                                      exception=rm['msg'])
+                                                      exception=rm["msg"])
 
             else:
                 return config.move_file_exception(fileName=fileName,
-                                                  exception=cp['msg'])
+                                                  exception=cp["msg"])
 
         else:
             return config.no_folder_error(folderPath=targetPath)
@@ -298,22 +304,22 @@ class FileManager(object):
                 cp = self.copy_folder(folderPath=folderPath,
                                       targetPath=targetPath)
 
-                if cp['result']:
+                if cp["result"]:
                     rm = self.delete_folder(folderPath=folderPath)
 
-                    if rm['result']:
-                        MSG = config.MSG_CODE
+                    if rm["result"]:
                         result = True
+                        MSG = config.MSG_CODE
                         msg = MSG[21].format(folderPath, targetPath)
-                        return {'result': result, 'msg': msg}
+                        return {"result": result, "msg": msg}
 
                     else:
                         return config.move_folder_exception(folderPath=folderPath,
-                                                            exception=rm['msg'])
+                                                            exception=rm["msg"])
 
                 else:
                     return config.move_folder_exception(folderPath=folderPath,
-                                                        exception=cp['msg'])
+                                                        exception=cp["msg"])
 
             else:
                 return config.no_folder_error(folderPath=targetPath)
@@ -330,10 +336,10 @@ class Checker(object):
 
     def __repr__(self):
         class_name = self.__class__.__name__
-        properties = ('{0} = {1}'.format(k, v) for k, v in self.__dict__.items())
-        return '<{0}: \n  {1}\n>'.format(class_name, '\n  '.join(properties))
+        properties = ("{0} = {1}".format(k, v) for k, v in self.__dict__.items())
+        return "<{0}: \n  {1}\n>".format(class_name, "\n  ".join(properties))
 
-    def check_path(self, PATH=''):
+    def check_path(self, PATH=""):
         if len(PATH):
             if path.exists(PATH):
                 if path.isdir(PATH):
@@ -348,7 +354,7 @@ class Checker(object):
         else:
             raise BaseException
 
-    def check_file(self, FILE=''):
+    def check_file(self, FILE=""):
         if len(FILE):
             if path.exists(FILE):
                 if path.isfile(FILE) and access(FILE, R_OK):
@@ -363,10 +369,10 @@ class Checker(object):
         else:
             raise BaseException
 
-    def path_full(self, PATH=''):
+    def path_full(self, PATH=""):
         if len(PATH):
             if not PATH.endswith(self.platform.pathSplit):
-                return '{0}{1}'.format(PATH, self.platform.pathSplit)
+                return "{0}{1}".format(PATH, self.platform.pathSplit)
 
             else:
                 return PATH
